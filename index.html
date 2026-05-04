@@ -297,10 +297,42 @@
         const imgPorteroDer = "https://lh3.googleusercontent.com/d/1wiADJgG7WzZN0zUoWctUZzEmuqUOIsYu";
 
         const database = [
-            { n: "58,76", l: ["Cincuenta y ocho unidades y setenta y seis centésimas"], traps: ["58,67", "85,76", "57,86"] },
-            { n: "27,09", l: ["Veintisiete unidades y nueve centésimas"], traps: ["27,90", "72,09", "27,9"] },
-            { n: "80,15", l: ["Ochenta unidades y quince centésimas"], traps: ["80,51", "8,15", "8,01"] },
-            { n: "42,04", l: ["Cuarenta y dos unidades y cuatro centésimas"], traps: ["42,40", "24,04", "42,4"] }
+            { 
+                n: "58,76", 
+                l: [
+                    "Cincuenta y ocho coma setenta y seis",
+                    "Cincuenta y ocho unidades y setenta y seis centésimas",
+                    "Cinco mil ochocientas setenta y seis centésimas"
+                ], 
+                traps: ["58,67", "85,76", "57,86"] 
+            },
+            { 
+                n: "27,09", 
+                l: [
+                    "Veintisiete coma cero nueve",
+                    "Veintisiete unidades y nueve centésimas",
+                    "Dos mil setecientas nueve centésimas"
+                ], 
+                traps: ["27,90", "72,09", "27,9"] 
+            },
+            { 
+                n: "80,15", 
+                l: [
+                    "Ochenta coma quince",
+                    "Ochenta unidades y quince centésimas",
+                    "Ocho mil quince centésimas"
+                ], 
+                traps: ["80,51", "8,15", "8,01"] 
+            },
+            { 
+                n: "42,04", 
+                l: [
+                    "Cuarenta y dos coma cero cuatro",
+                    "Cuarenta y dos unidades y cuatro centésimas",
+                    "Cuatro mil doscientas cuatro centésimas"
+                ], 
+                traps: ["42,40", "24,04", "42,4"] 
+            }
         ];
 
         let currentCorrect = "";
@@ -417,7 +449,10 @@
 
             const item = database[Math.floor(Math.random() * database.length)];
             currentCorrect = item.n;
-            inst.innerText = `Chuta al: "${item.l[0]}"`;
+            
+            // ELECCIÓN ALEATORIA DE UNA DE LAS 3 FORMAS DE LEER EL NÚMERO
+            const fraseAleatoria = item.l[Math.floor(Math.random() * item.l.length)];
+            inst.innerText = `Chuta al: "${fraseAleatoria}"`;
 
             let options = [item.n, ...item.traps].sort(() => Math.random() - 0.5);
 
