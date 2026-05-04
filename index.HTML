@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mateamigos: ¡Gol Realista!</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: #2e7d32 url('https://lh3.googleusercontent.com/d/11vp6crgMi8BzzxWsWdR2SB3_SUbs03Kg=w1600-h900-iv1') no-repeat center center fixed;
+            background-size: cover;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            touch-action: manipulation;
+        }
+
+        /* Bloqueo Vertical */
+        #orientation-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        @media (orientation: portrait) {
+            #orientation-overlay { display: flex; }
+        }
+
+        /* Pantalla de Inicio - Selección de Equipos */
+        #setup-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .setup-container, .victory-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            color: #333;
+            text-align: center;
+            width: 300px;
+            z-index: 2010;
+        }
+
+        .setup-container input, .victory-container input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .setup-container button, .victory-container button {
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 15px;
+        }
+
+        #ui-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 100;
+            text-align: center;
+            width: 85%;
+            max-width: 600px;
+            position: relative;
+        }
+
+        /* BOTÓN DE AUDIO */
+        #audio-toggle {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: #eee;
+            border: 1px solid #ccc;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* MARCADOR REALISTA */
+        #scoreboard {
+            background: #111;
+            border: 4px solid #444;
+            border-radius: 10px;
+            padding: 5px 20px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            box-shadow: 0 0 20px rgba(0,255,0,0.2);
+            z-index: 100;
+        }
+
+        .team-score {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .team-name {
+            color: #aaa;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .score-number {
+            color: #ffeb3b;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 2rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+        }
+
+        .score-divider {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        h1 { color: #1a237e; margin: 0; font-size: 1.1rem; }
+        #instruction { font-size: 1.2rem; font-weight: bold; color: #d32f2f; margin-top: 5px; }
+
+        #goal-hitbox-container {
+            position: absolute;
+            top: 42%; 
+            width: 60%; 
+            height: 25%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .target-ball {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            border: 3px solid #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+            user-select: none;
+        }
+
+        #goalkeeper {
+            position: absolute;
+            top: 60%; 
+            left: 50%;
+            transform: translate(-50%, -50%);
+            height: 25vh; 
+            z-index: 5;
+            pointer-events: none;
+            transition: all 0.4s ease-out;
+        }
+
+        #goalkeeper.diving {
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+
+        #main-ball {
+            position: absolute;
+            bottom: 2%; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px; 
+            height: 150px; 
+            font-size: 110px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 50;
+            pointer-events: none;
+            filter: drop-shadow(0 15px 10px rgba(0,0,0,0.4));
+        }
+
+        #feedback {
+            position: fixed;
+            top: 35%;
+            font-size: 5rem;
+            font-weight: bold;
+            display: none;
+            z-index: 200;
+            text-shadow: 5px 5px 0px #000;
+            text-align: center;
+            width: 100%;
+        }
+
+        .correct { color: #44ff44; }
+        .wrong { color: #ff4444; }
+
+        /* --- PANTALLA FINAL Y CONFETI --- */
+        #victory-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        #victory-title {
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            font-size: 3.5rem;
+            font-style: italic;
+            color: #ffeb3b;
+            text-transform: uppercase;
+            text-shadow: 3px 3px 10px rgba(255, 255, 255, 0.5), -2px -2px 0 #d32f2f, 2px -2px 0 #d32f2f, -2px 2px 0 #d32f2f, 2px 2px 0 #d32f2f;
+            z-index: 2010;
+            text-align: center;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        #ranking-list {
+            text-align: left;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            animation: fall linear infinite;
+            z-index: 2005;
+            pointer-events: none;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(105vh) rotate(720deg); }
+        }
+
+        /* --- REDUCCIÓN DE TAMAÑO PARA MÓVILES Y TABLETS --- */
+        @media (max-width: 900px), (max-height: 500px) {
+            #ui-panel {
+                padding: 4px 10px;
+                width: 75%;
+            }
+            h1 { font-size: 0.65rem; }
+            #instruction { font-size: 0.75rem; margin-top: 2px; }
+            #scoreboard { padding: 2px 10px; margin-top: 4px; gap: 10px; border-width: 2px; }
+            .team-name { font-size: 0.4rem; max-width: 50px; }
+            .score-number { font-size: 1.2rem; }
+            .score-divider { font-size: 1rem; }
+            #audio-toggle { width: 25px; height: 25px; font-size: 0.8rem; top: 5px; right: 5px; }
+            #victory-title { font-size: 2.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="orientation-overlay">
+        <h2>🔄 Gira tu dispositivo</h2>
+        <p>El estadio se ve mejor en horizontal</p>
+    </div>
+
+    <div id="setup-screen">
+        <div class="setup-container">
+            <h3>⚽ CONFIGURACIÓN</h3>
+            <input type="text" id="player-team-input" placeholder="Tu Equipo" maxlength="20">
+            <input type="text" id="cpu-team-input" placeholder="Equipo Contrario" maxlength="20">
+            <button onclick="startGame()">¡A JUGAR!</button>
+        </div>
+    </div>
+
+    <div id="victory-screen">
+        <div id="victory-title">¡CAMPEONES!</div>
+        <div class="victory-container">
+            <div id="save-section">
+                <h3>🏆 ¡INMORTALIZA TU VICTORIA! 🏆</h3>
+                <input type="text" id="player-name-end" placeholder="Escribe tu Nombre" maxlength="15">
+                <button id="btn-save-score" onclick="saveScore()">Guardar Récord</button>
+            </div>
+            <div id="ranking-list"></div>
+            <button onclick="location.reload()" style="margin-top:20px; background:#1a237e;">Volver a Jugar</button>
+        </div>
+    </div>
+
+    <div id="ui-panel">
+        <button id="audio-toggle" onclick="toggleAudio()">🔊</button>
+        <h1>🏆 MATEAMIGOS: EL GRAN ESTADIO ⚽</h1>
+        <div id="instruction">Cargando desafío...</div>
+        
+        <div id="scoreboard">
+            <div class="team-score">
+                <div class="team-name" id="player-name-label">JUGADOR</div>
+                <div class="score-number" id="player-score">0</div>
+            </div>
+            <div class="score-divider">-</div>
+            <div class="team-score">
+                <div class="team-name" id="cpu-name-label">RIVAL</div>
+                <div class="score-number" id="cpu-score">0</div>
+            </div>
+        </div>
+    </div>
+
+    <img id="goalkeeper" src="https://lh3.googleusercontent.com/u/0/d/1nP4RTwKegzC8arzEpWqITDu33eWgrfF4=w1600-h900" alt="Portero">
+
+    <div id="goal-hitbox-container"></div>
+
+    <div id="main-ball">⚽</div>
+    <div id="feedback"></div>
+
+    <script>
+        const imgPorteroCentro = "https://lh3.googleusercontent.com/u/0/d/1nP4RTwKegzC8arzEpWqITDu33eWgrfF4=w1600-h900";
+        const imgPorteroIzq = "https://lh3.googleusercontent.com/d/18hnixhiLm7H_dOYn1gp2WAa4tcVFME8e";
+        const imgPorteroDer = "https://lh3.googleusercontent.com/d/1wiADJgG7WzZN0zUoWctUZzEmuqUOIsYu";
+
+        const database = [
+            { 
+                n: "58,76", 
+                l: [
+                    "Cincuenta y ocho coma setenta y seis",
+                    "Cincuenta y ocho unidades y setenta y seis centésimas",
+                    "Cinco mil ochocientas setenta y seis centésimas"
+                ], 
+                traps: ["58,67", "85,76", "57,86"] 
+            },
+            { 
+                n: "27,09", 
+                l: [
+                    "Veintisiete coma cero nueve",
+                    "Veintisiete unidades y nueve centésimas",
+                    "Dos mil setecientas nueve centésimas"
+                ], 
+                traps: ["27,90", "72,09", "27,9"] 
+            },
+            { 
+                n: "80,15", 
+                l: [
+                    "Ochenta coma quince",
+                    "Ochenta unidades y quince centésimas",
+                    "Ocho mil quince centésimas"
+                ], 
+                traps: ["80,51", "8,15", "8,01"] 
+            },
+            { 
+                n: "42,04", 
+                l: [
+                    "Cuarenta y dos coma cero cuatro",
+                    "Cuarenta y dos unidades y cuatro centésimas",
+                    "Cuatro mil doscientas cuatro centésimas"
+                ], 
+                traps: ["42,40", "24,04", "42,4"] 
+            }
+        ];
+
+        let currentCorrect = "";
+        let isKicking = false;
+        let pScore = 0;
+        let cScore = 0;
+        
+        // --- GESTIÓN DE AUDIO ---
+        let audioCtx;
+        let bgMusic;
+        let setupMusic;
+        let isAudioMuted = false;
+
+        // Configuración de la música de inicio
+        setupMusic = new Audio("champions.mp3");
+        setupMusic.loop = true;
+        setupMusic.volume = 0.5;
+
+        // Intentar reproducir en cuanto el usuario interactúe con la pantalla
+        document.addEventListener('click', initSetupMusic, { once: true });
+        document.addEventListener('touchstart', initSetupMusic, { once: true });
+
+        function initSetupMusic() {
+            // Solo suena si seguimos en la pantalla de setup o victoria
+            if (document.getElementById('setup-screen').style.display !== 'none' || document.getElementById('victory-screen').style.display !== 'none') {
+                setupMusic.play().catch(e => console.warn("Audio bloqueado:", e));
+            }
+        }
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            if (!bgMusic) {
+                bgMusic = new Audio("AUDIOESTADIO.mp3");
+                bgMusic.loop = true;
+                bgMusic.volume = 0.5;
+            }
+
+            if (!isAudioMuted) {
+                bgMusic.play().catch(e => console.warn("El navegador bloqueó el audio inicial:", e));
+            }
+        }
+
+        function toggleAudio() {
+            isAudioMuted = !isAudioMuted;
+            const btn = document.getElementById('audio-toggle');
+            
+            if (bgMusic) {
+                if (isAudioMuted) {
+                    bgMusic.pause();
+                    btn.innerText = "🔇";
+                } else {
+                    bgMusic.play();
+                    btn.innerText = "🔊";
+                }
+            }
+        }
+
+        function playWhistle() {
+            if (!audioCtx || isAudioMuted) return; 
+            
+            const osc1 = audioCtx.createOscillator();
+            const osc2 = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc1.type = 'square';
+            osc2.type = 'square';
+            osc1.frequency.setValueAtTime(2800, audioCtx.currentTime);
+            osc2.frequency.setValueAtTime(2950, audioCtx.currentTime);
+
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.05);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime + 0.3);
+            gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+
+            osc1.connect(gainNode);
+            osc2.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc1.start(audioCtx.currentTime);
+            osc2.start(audioCtx.currentTime);
+            osc1.stop(audioCtx.currentTime + 0.4);
+            osc2.stop(audioCtx.currentTime + 0.4);
+        }
+        // --- FIN AUDIO ---
+
+        function startGame() {
+            if (setupMusic) {
+                setupMusic.pause();
+                setupMusic.currentTime = 0;
+            }
+
+            initAudio(); 
+            
+            const pInput = document.getElementById('player-team-input').value || "MATEAMIGOS";
+            const cInput = document.getElementById('cpu-team-input').value || "RIVAL";
+            
+            document.getElementById('player-name-label').innerText = pInput;
+            document.getElementById('cpu-name-label').innerText = cInput;
+            
+            document.getElementById('setup-screen').style.display = 'none';
+            loadRound();
+        }
+
+        function loadRound() {
+            if (isKicking) return;
+            
+            setTimeout(() => {
+                playWhistle();
+            }, 1000);
+
+            const feedback = document.getElementById('feedback');
+            const ball = document.getElementById('main-ball');
+            const container = document.getElementById('goal-hitbox-container');
+            const inst = document.getElementById('instruction');
+            const gk = document.getElementById('goalkeeper');
+
+            feedback.style.display = 'none';
+            ball.style.bottom = "2%";
+            ball.style.top = "auto";
+            ball.style.left = "50%";
+            ball.style.transform = "translateX(-50%) scale(1)";
+            
+            gk.src = imgPorteroCentro;
+            gk.classList.remove('diving');
+            gk.style.left = "50%";
+            gk.style.top = "60%";
+
+            const item = database[Math.floor(Math.random() * database.length)];
+            currentCorrect = item.n;
+            
+            const fraseAleatoria = item.l[Math.floor(Math.random() * item.l.length)];
+            inst.innerText = `Chuta al: "${fraseAleatoria}"`;
+
+            let options = [item.n, ...item.traps].sort(() => Math.random() - 0.5);
+
+            container.innerHTML = "";
+            options.forEach(num => {
+                const b = document.createElement('div');
+                b.className = 'target-ball';
+                b.innerText = num;
+                b.onclick = (e) => kick(num, e.target);
+                container.appendChild(b);
+            });
+        }
+
+        function kick(num, element) {
+            if (isKicking) return;
+            isKicking = true;
+
+            const ball = document.getElementById('main-ball');
+            const feedback = document.getElementById('feedback');
+            const gk = document.getElementById('goalkeeper');
+            const rect = element.getBoundingClientRect();
+            
+            const targetX = rect.left + rect.width / 2;
+            const targetY = rect.top + rect.height / 2;
+            const screenCenter = window.innerWidth / 2;
+
+            const isCorrect = (num === currentCorrect);
+            const ballOnRight = targetX > screenCenter;
+
+            gk.classList.add('diving');
+
+            if (isCorrect) {
+                pScore++;
+                document.getElementById('player-score').innerText = pScore;
+                if (ballOnRight) {
+                    gk.src = imgPorteroIzq;
+                    gk.style.left = "35%";
+                } else {
+                    gk.src = imgPorteroDer;
+                    gk.style.left = "65%";
+                }
+            } else {
+                cScore++;
+                document.getElementById('cpu-score').innerText = cScore;
+                if (ballOnRight) {
+                    gk.src = imgPorteroDer;
+                    gk.style.left = "65%";
+                } else {
+                    gk.src = imgPorteroIzq;
+                    gk.style.left = "35%";
+                }
+            }
+
+            ball.style.left = targetX + "px";
+            ball.style.top = targetY + "px";
+            ball.style.transform = "translate(-50%, -50%) scale(0.3)";
+
+            setTimeout(() => {
+                if(isCorrect) {
+                    feedback.innerText = "¡GOOOOOL!";
+                    feedback.className = "correct";
+                } else {
+                    feedback.innerText = "¡LA PARÓ!";
+                    feedback.className = "wrong";
+                }
+                feedback.style.display = "block";
+                
+                setTimeout(() => {
+                    // COMPROBAR VICTORIA
+                    if ((pScore - cScore) >= 10) {
+                        triggerVictory();
+                    } else {
+                        isKicking = false;
+                        loadRound();
+                    }
+                }, 2000);
+            }, 700);
+        }
+
+        // --- LÓGICA DE VICTORIA ---
+        function triggerVictory() {
+            // Detener el juego
+            document.getElementById('ui-panel').style.display = 'none';
+            document.getElementById('goal-hitbox-container').style.display = 'none';
+            document.getElementById('goalkeeper').style.display = 'none';
+            document.getElementById('main-ball').style.display = 'none';
+            document.getElementById('feedback').style.display = 'none';
+
+            // Parar música estadio, poner champions
+            if (bgMusic) bgMusic.pause();
+            if (setupMusic && !isAudioMuted) {
+                setupMusic.currentTime = 0;
+                setupMusic.play().catch(e => console.warn("Audio victoria bloqueado", e));
+            }
+
+            // Nombre del ganador
+            const teamName = document.getElementById('player-name-label').innerText;
+            document.getElementById('victory-title').innerText = `¡${teamName}\nCAMPEÓN!`;
+            
+            // Mostrar Pantalla
+            document.getElementById('victory-screen').style.display = 'flex';
+            
+            // Lluvia de confeti
+            createConfetti();
+        }
+
+        function createConfetti() {
+            const colors = ['#fce18a', '#ff726d', '#b48def', '#f4306d', '#44ff44', '#42a5f5'];
+            const screen = document.getElementById('victory-screen');
+            for(let i = 0; i < 100; i++) {
+                let conf = document.createElement('div');
+                conf.className = 'confetti';
+                conf.style.left = Math.random() * 100 + 'vw';
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                conf.style.animationDelay = Math.random() * 3 + 's';
+                screen.appendChild(conf);
+            }
+        }
+
+        function saveScore() {
+            const playerName = document.getElementById('player-name-end').value.trim() || 'Jugador Anónimo';
+            const teamName = document.getElementById('player-name-label').innerText;
+            
+            // Objeto con la puntuación
+            const currentScore = {
+                name: playerName,
+                team: teamName,
+                pScore: pScore,
+                cScore: cScore
+            };
+
+            // Traer array desde LocalStorage o crear uno nuevo
+            let ranking = JSON.parse(localStorage.getItem('mateamigosRanking')) || [];
+            ranking.push(currentScore);
+
+            // Ordenar: Los mejores son los que menos goles del RIVAL han permitido
+            ranking.sort((a, b) => {
+                let diffA = a.pScore - a.cScore;
+                let diffB = b.pScore - b.cScore;
+                if (diffA !== diffB) return diffB - diffA; // Mayor diferencia de goles primero
+                return a.cScore - b.cScore; // En caso de empate, el que menos goles en contra tenga
+            });
+
+            // Quedarse solo con el Top 5
+            ranking = ranking.slice(0, 5);
+
+            // Guardar de vuelta en LocalStorage
+            localStorage.setItem('mateamigosRanking', JSON.stringify(ranking));
+
+            // Ocultar sección de guardado y mostrar Top 5
+            document.getElementById('save-section').style.display = 'none';
+            
+            let listHTML = "<h3>🌟 TOP 5 HISTÓRICO 🌟</h3><ol style='text-align: left; margin: 0 auto; display: inline-block; padding-left: 20px;'>";
+            ranking.forEach(r => {
+                listHTML += `<li><b>${r.name}</b> (${r.team}): ${r.pScore} - ${r.cScore}</li>`;
+            });
+            listHTML += "</ol>";
+            
+            document.getElementById('ranking-list').innerHTML = listHTML;
+        }
+    </script>
+</body>
+</html>
