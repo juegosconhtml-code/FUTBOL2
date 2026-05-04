@@ -343,7 +343,24 @@
         // --- GESTIÓN DE AUDIO ---
         let audioCtx;
         let bgMusic;
+        let setupMusic;
         let isAudioMuted = false;
+
+        // Configuración de la música de inicio
+        setupMusic = new Audio("champions.mp3");
+        setupMusic.loop = true;
+        setupMusic.volume = 0.5;
+
+        // Intentar reproducir en cuanto el usuario interactúe con la pantalla (por política del navegador)
+        document.addEventListener('click', initSetupMusic, { once: true });
+        document.addEventListener('touchstart', initSetupMusic, { once: true });
+
+        function initSetupMusic() {
+            // Solo suena si seguimos en la pantalla de setup
+            if (document.getElementById('setup-screen').style.display !== 'none') {
+                setupMusic.play().catch(e => console.warn("Audio de inicio bloqueado:", e));
+            }
+        }
 
         function initAudio() {
             // Inicializar el contexto para el silbato (necesita interacción del usuario)
@@ -410,6 +427,12 @@
         // --- FIN AUDIO ---
 
         function startGame() {
+            // Detenemos la música de la pantalla de inicio si estaba sonando
+            if (setupMusic) {
+                setupMusic.pause();
+                setupMusic.currentTime = 0;
+            }
+
             initAudio(); // Se activa aquí para cumplir con la ley de interacción del navegador
             
             const pInput = document.getElementById('player-team-input').value || "MATEAMIGOS";
