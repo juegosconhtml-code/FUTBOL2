@@ -50,16 +50,17 @@
             color: white;
         }
 
-        .setup-container {
+        .setup-container, .victory-container {
             background: white;
             padding: 30px;
             border-radius: 20px;
             color: #333;
             text-align: center;
             width: 300px;
+            z-index: 2010;
         }
 
-        .setup-container input {
+        .setup-container input, .victory-container input {
             width: 90%;
             padding: 10px;
             margin: 10px 0;
@@ -68,7 +69,7 @@
             font-size: 1rem;
         }
 
-        .setup-container button {
+        .setup-container button, .victory-container button {
             background: #2e7d32;
             color: white;
             border: none;
@@ -234,6 +235,54 @@
         .correct { color: #44ff44; }
         .wrong { color: #ff4444; }
 
+        /* --- PANTALLA FINAL Y CONFETI --- */
+        #victory-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        #victory-title {
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            font-size: 3.5rem;
+            font-style: italic;
+            color: #ffeb3b;
+            text-transform: uppercase;
+            text-shadow: 3px 3px 10px rgba(255, 255, 255, 0.5), -2px -2px 0 #d32f2f, 2px -2px 0 #d32f2f, -2px 2px 0 #d32f2f, 2px 2px 0 #d32f2f;
+            z-index: 2010;
+            text-align: center;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        #ranking-list {
+            text-align: left;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            animation: fall linear infinite;
+            z-index: 2005;
+            pointer-events: none;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(105vh) rotate(720deg); }
+        }
+
         /* --- REDUCCIÓN DE TAMAÑO PARA MÓVILES Y TABLETS --- */
         @media (max-width: 900px), (max-height: 500px) {
             #ui-panel {
@@ -247,6 +296,7 @@
             .score-number { font-size: 1.2rem; }
             .score-divider { font-size: 1rem; }
             #audio-toggle { width: 25px; height: 25px; font-size: 0.8rem; top: 5px; right: 5px; }
+            #victory-title { font-size: 2.2rem; }
         }
     </style>
 </head>
@@ -263,6 +313,19 @@
             <input type="text" id="player-team-input" placeholder="Tu Equipo" maxlength="20">
             <input type="text" id="cpu-team-input" placeholder="Equipo Contrario" maxlength="20">
             <button onclick="startGame()">¡A JUGAR!</button>
+        </div>
+    </div>
+
+    <div id="victory-screen">
+        <div id="victory-title">¡CAMPEONES!</div>
+        <div class="victory-container">
+            <div id="save-section">
+                <h3>🏆 ¡INMORTALIZA TU VICTORIA! 🏆</h3>
+                <input type="text" id="player-name-end" placeholder="Escribe tu Nombre" maxlength="15">
+                <button id="btn-save-score" onclick="saveScore()">Guardar Récord</button>
+            </div>
+            <div id="ranking-list"></div>
+            <button onclick="location.reload()" style="margin-top:20px; background:#1a237e;">Volver a Jugar</button>
         </div>
     </div>
 
@@ -351,19 +414,18 @@
         setupMusic.loop = true;
         setupMusic.volume = 0.5;
 
-        // Intentar reproducir en cuanto el usuario interactúe con la pantalla (por política del navegador)
+        // Intentar reproducir en cuanto el usuario interactúe con la pantalla
         document.addEventListener('click', initSetupMusic, { once: true });
         document.addEventListener('touchstart', initSetupMusic, { once: true });
 
         function initSetupMusic() {
-            // Solo suena si seguimos en la pantalla de setup
-            if (document.getElementById('setup-screen').style.display !== 'none') {
-                setupMusic.play().catch(e => console.warn("Audio de inicio bloqueado:", e));
+            // Solo suena si seguimos en la pantalla de setup o victoria
+            if (document.getElementById('setup-screen').style.display !== 'none' || document.getElementById('victory-screen').style.display !== 'none') {
+                setupMusic.play().catch(e => console.warn("Audio bloqueado:", e));
             }
         }
 
         function initAudio() {
-            // Inicializar el contexto para el silbato (necesita interacción del usuario)
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
@@ -371,7 +433,6 @@
                 audioCtx.resume();
             }
 
-            // Inicializar música de fondo con archivo local de GitHub
             if (!bgMusic) {
                 bgMusic = new Audio("AUDIOESTADIO.mp3");
                 bgMusic.loop = true;
@@ -427,13 +488,12 @@
         // --- FIN AUDIO ---
 
         function startGame() {
-            // Detenemos la música de la pantalla de inicio si estaba sonando
             if (setupMusic) {
                 setupMusic.pause();
                 setupMusic.currentTime = 0;
             }
 
-            initAudio(); // Se activa aquí para cumplir con la ley de interacción del navegador
+            initAudio(); 
             
             const pInput = document.getElementById('player-team-input').value || "MATEAMIGOS";
             const cInput = document.getElementById('cpu-team-input').value || "RIVAL";
@@ -448,7 +508,6 @@
         function loadRound() {
             if (isKicking) return;
             
-            // Silbato 1 segundo después de cargar ronda
             setTimeout(() => {
                 playWhistle();
             }, 1000);
@@ -473,7 +532,6 @@
             const item = database[Math.floor(Math.random() * database.length)];
             currentCorrect = item.n;
             
-            // ELECCIÓN ALEATORIA DE UNA DE LAS 3 FORMAS DE LEER EL NÚMERO
             const fraseAleatoria = item.l[Math.floor(Math.random() * item.l.length)];
             inst.innerText = `Chuta al: "${fraseAleatoria}"`;
 
@@ -544,10 +602,98 @@
                 feedback.style.display = "block";
                 
                 setTimeout(() => {
-                    isKicking = false;
-                    loadRound();
+                    // COMPROBAR VICTORIA
+                    if ((pScore - cScore) >= 10) {
+                        triggerVictory();
+                    } else {
+                        isKicking = false;
+                        loadRound();
+                    }
                 }, 2000);
             }, 700);
+        }
+
+        // --- LÓGICA DE VICTORIA ---
+        function triggerVictory() {
+            // Detener el juego
+            document.getElementById('ui-panel').style.display = 'none';
+            document.getElementById('goal-hitbox-container').style.display = 'none';
+            document.getElementById('goalkeeper').style.display = 'none';
+            document.getElementById('main-ball').style.display = 'none';
+            document.getElementById('feedback').style.display = 'none';
+
+            // Parar música estadio, poner champions
+            if (bgMusic) bgMusic.pause();
+            if (setupMusic && !isAudioMuted) {
+                setupMusic.currentTime = 0;
+                setupMusic.play().catch(e => console.warn("Audio victoria bloqueado", e));
+            }
+
+            // Nombre del ganador
+            const teamName = document.getElementById('player-name-label').innerText;
+            document.getElementById('victory-title').innerText = `¡${teamName}\nCAMPEÓN!`;
+            
+            // Mostrar Pantalla
+            document.getElementById('victory-screen').style.display = 'flex';
+            
+            // Lluvia de confeti
+            createConfetti();
+        }
+
+        function createConfetti() {
+            const colors = ['#fce18a', '#ff726d', '#b48def', '#f4306d', '#44ff44', '#42a5f5'];
+            const screen = document.getElementById('victory-screen');
+            for(let i = 0; i < 100; i++) {
+                let conf = document.createElement('div');
+                conf.className = 'confetti';
+                conf.style.left = Math.random() * 100 + 'vw';
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                conf.style.animationDelay = Math.random() * 3 + 's';
+                screen.appendChild(conf);
+            }
+        }
+
+        function saveScore() {
+            const playerName = document.getElementById('player-name-end').value.trim() || 'Jugador Anónimo';
+            const teamName = document.getElementById('player-name-label').innerText;
+            
+            // Objeto con la puntuación
+            const currentScore = {
+                name: playerName,
+                team: teamName,
+                pScore: pScore,
+                cScore: cScore
+            };
+
+            // Traer array desde LocalStorage o crear uno nuevo
+            let ranking = JSON.parse(localStorage.getItem('mateamigosRanking')) || [];
+            ranking.push(currentScore);
+
+            // Ordenar: Los mejores son los que menos goles del RIVAL han permitido
+            ranking.sort((a, b) => {
+                let diffA = a.pScore - a.cScore;
+                let diffB = b.pScore - b.cScore;
+                if (diffA !== diffB) return diffB - diffA; // Mayor diferencia de goles primero
+                return a.cScore - b.cScore; // En caso de empate, el que menos goles en contra tenga
+            });
+
+            // Quedarse solo con el Top 5
+            ranking = ranking.slice(0, 5);
+
+            // Guardar de vuelta en LocalStorage
+            localStorage.setItem('mateamigosRanking', JSON.stringify(ranking));
+
+            // Ocultar sección de guardado y mostrar Top 5
+            document.getElementById('save-section').style.display = 'none';
+            
+            let listHTML = "<h3>🌟 TOP 5 HISTÓRICO 🌟</h3><ol style='text-align: left; margin: 0 auto; display: inline-block; padding-left: 20px;'>";
+            ranking.forEach(r => {
+                listHTML += `<li><b>${r.name}</b> (${r.team}): ${r.pScore} - ${r.cScore}</li>`;
+            });
+            listHTML += "</ol>";
+            
+            document.getElementById('ranking-list').innerHTML = listHTML;
         }
     </script>
 </body>
